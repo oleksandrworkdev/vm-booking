@@ -1,0 +1,4 @@
+apiVersion: v2
+description: Cloud Watch
+name: cloud-watch
+version: 0.1.0

@@ -1,0 +1,4 @@
+apiVersion: v2
+description: vm-booking
+name: vm-booking
+version: 0.1.0

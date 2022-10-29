@@ -1,0 +1,7 @@
+DB_USERNAME=`aws --region=us-west-1 ssm get-parameter --name "vm_booking_app.db_username" --output text --query Parameter.Value`
+DB_PASSWORD=`aws --region=us-west-1 ssm get-parameter --name "vm_booking_app.db_password" --with-decryption --output text --query Parameter.Value`
+DB_NAME='vm_booking'
+DB_HOST=`aws --region=us-west-1 ssm get-parameter --name "vm_booking_app.db_host" --output text --query Parameter.Value`
+DB_PORT='5432'
+FLASK_ENV='production'
+APP_VERSION=`pip show vm-booking-app | grep Version | cut -d " " -f 2`

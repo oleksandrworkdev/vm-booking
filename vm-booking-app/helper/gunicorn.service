@@ -1,0 +1,23 @@
+[Unit]
+Description=gunicorn daemon
+# Requires=gunicorn.socket
+After=network.target
+
+[Service]
+Type=notify
+# the specific user that our service will run as
+# User=root
+# Group=root
+# another option for an even more restricted service is
+# DynamicUser=yes
+# see http://0pointer.net/blog/dynamic-users-with-systemd.html
+RuntimeDirectory=gunicorn
+WorkingDirectory=/app/vm-booking-app
+ExecStart=/bin/bash -a -c 'source /app/vm-booking-app/gunicorn.envfile && /usr/local/bin/gunicorn --worker-class gevent --workers 2 --bind 0.0.0.0:5000 wsgi:app --max-requests 10000 --timeout 5 --keep-alive 5 --log-level info'
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.app.configMapName }}
+  namespace: {{ .Values.app.namespace }}
+data:
+  flask_env: "production"
+  app_version: {{ .Values.app.version }}
+  db_name: "vm_booking"
+  db_port: "5432"

@@ -1,0 +1,26 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+psycopg2-binary = "*"
+flask-sqlalchemy = "*"
+sqlalchemy-serializer = "*"
+flask-script = "*"
+flask-migrate = "==2.7.0"
+flask = "==1.1.4"
+
+[dev-packages]
+python-dotenv = "*"
+pytest = "*"
+pytest-cov = "*"
+flake8 = "*"
+black = "*"
+twine = "*"
+
+[requires]
+python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true

@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.deployName }}
+  namespace: {{ .Values.app.namespace }}
+  labels:
+    app: {{ .Values.app.label }}
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.app.label }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.label }}
+    spec:
+      containers:
+        - name: {{ .Values.app.label }}
+          image: {{ .Values.app.image }}
+          ports:
+            - containerPort: {{ .Values.app.port }}
+          env:
+            - name: FLASK_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.app.configMapName }}
+                  key: flask_env
+            - name: APP_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.app.configMapName }}
+                  key: app_version
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.app.configMapName }}
+                  key: db_name
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.app.configMapName }}
+                  key: db_port
+
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.secretName }}
+                  key: db_host
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.secretName }}
+                  key: db_username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.app.secretName }}
+                  key: db_password
+
+
+
+

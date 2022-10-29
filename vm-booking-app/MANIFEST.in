@@ -1,0 +1,2 @@
+graft migrations
+graft vm_booking_api/migrations

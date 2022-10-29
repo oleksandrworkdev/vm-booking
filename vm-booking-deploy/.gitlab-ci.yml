@@ -1,0 +1,40 @@
+image:
+  name: hashicorp/terraform:light
+  entrypoint: [""]
+
+variables:
+  AWS_REGION: $AWS_DEFAULT_REGION
+
+stages:
+  - plan
+  - deploy
+  - destroy
+
+before_script:
+  - apk add --no-cache python3 py3-pip && pip3 install --upgrade pip && pip3 install awscli
+  - aws --version
+  - terraform init -input=false
+  - vba_app_version=$APP_VERSION.$BUILD_VERSION
+
+plan:
+  stage: plan
+  script:
+    - echo "vba_app_version will be set to $vba_app_version"
+    - terraform plan -var="vba_app_version=$vba_app_version" -var-file="${TF_VAR_FILE}" -input=false -out=tfdeploy_api_plan
+    - terraform show ./tfdeploy_api_plan
+    - mv ./tfdeploy_api_plan ${CI_PROJECT_DIR}
+  artifacts:
+    paths: [tfdeploy_api_plan]
+    expire_in: 1 week
+
+apply:
+  stage: deploy
+  when: manual
+  script:
+    - terraform apply -input=false "${CI_PROJECT_DIR}/tfdeploy_api_plan"
+
+destroy:
+  stage: destroy
+  when: manual
+  script:
+    - terraform apply -destroy -auto-approve -input=false -var="vba_app_version=$vba_app_version" -var-file="${TF_VAR_FILE}"

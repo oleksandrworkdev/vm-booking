@@ -1,0 +1,121 @@
+# Tagged releases of Python docker images can be found at:
+# https://hub.docker.com/r/library/python/tags/
+image: python:3.9
+
+# Change pip's cache directory to be inside the project directory since we can
+# only cache local items.
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PIPENV_VENV_IN_PROJECT: "enabled"
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  BUILD_NUM: $CI_PIPELINE_IID
+
+# Pip's cache doesn't store the python packages
+# https://pip.pypa.io/en/stable/reference/pip_install/#caching
+#
+# If you want to also cache the installed packages, you have to install
+# them in a virtualenv and cache it as well.
+cache:
+  key: $CI_COMMIT_REF_SLUG-$CI_PROJECT_DIR
+  paths:
+    - $CI_PROJECT_DIR/.cache/pip
+    - .venv/
+
+before_script:
+  - mkdir -p $CI_PROJECT_DIR/.cache/pip
+  - pip install pipenv
+  - pipenv install --skip-lock --dev
+
+  - "command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )"
+  - eval $(ssh-agent -s)
+
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+
+  - ssh-keyscan gitlab.jdobc.link >> ~/.ssh/known_hosts
+  - chmod 644 ~/.ssh/known_hosts
+
+  - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" >> ~/.ssh/config'
+
+  - git remote set-url origin https://$GIT_CI_USER:$GIT_CI_PASS@gitlab.jdobc.link/$CI_PROJECT_PATH.git
+  - git config --global user.email "gitlabci@example.com"
+  - git config --global user.name "GitlabCI"
+
+  - export APP_VERSION=`python setup.py -V`.$BUILD_NUM
+  - echo "App Ver.:" "$APP_VERSION"
+
+stages:
+  - static analysis
+  - test
+  - publish
+  - deploy
+
+flake8:
+  stage: static analysis
+  script:
+    - pipenv run flake8 vm_booking_api tests
+  rules:
+    - if: '$CI_TESTING_DISABLED == "true"'
+      when: never
+    - when: always
+
+pytest:
+  stage: test
+  script:
+    - pipenv run pytest
+  rules:
+    - if: '$CI_TESTING_DISABLED == "true"'
+      when: never
+    - when: always
+
+coverage:
+  stage: test
+  allow_failure: true
+  script:
+    - pipenv run pytest --cov=vm_booking_api --cov-fail-under=80
+  rules:
+    - if: '$CI_TESTING_DISABLED == "true"'
+      when: never
+    - when: always
+
+pypi:
+  stage: publish
+  rules:
+    - when: manual
+      allow_failure: true
+  script:
+    - TWINE_USERNAME=$PYPI_USERNAME TWINE_PASSWORD=$PYPI_PASSWORD pipenv run python setup.py upload
+
+ecr:
+  image: docker:19.03.12
+  stage: publish
+  services:
+    - name: docker:19.03.12-dind
+      alias: docker
+      command: ["--tls=false"]
+  rules:
+    - when: manual
+      allow_failure: true
+  before_script:
+    - apk add --no-cache py-pip
+    - pip install awscli
+    - docker info
+    - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $DOCKER_REGISTRY
+  script:
+    - docker build -t vm-booking .
+    - docker tag vm-booking:latest $ECR_URL:latest
+    - docker tag vm-booking:latest $ECR_URL:v$APP_VERSION
+    - docker push $ECR_URL:latest
+    - docker push $ECR_URL:v$APP_VERSION
+
+deploy:
+  stage: deploy
+  when: manual
+  trigger:
+    project: oonyshchenko/vm-booking-deploy
+    branch: JDOBC-319-ecs-cluster
+    strategy: depend
+  variables:
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
+    BUILD_VERSION: $BUILD_NUM
